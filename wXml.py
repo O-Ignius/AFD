@@ -1,0 +1,85 @@
+import xml.etree.ElementTree as ET
+
+
+class Xml:
+    def getAlfabet(self) -> str:
+        alfabet = ""
+        for transition in self.transitions:
+            char = transition.findtext("read") or ""
+            if char != "" and char not in alfabet:
+                alfabet += char
+        return alfabet
+
+    # return a list of dicts who has an id, bool for initial and bool for final
+    def getStates(self) -> list:
+        states = []
+        seen = set()
+        for state in self.states:
+
+            if state.get("id") in seen:
+                raise ValueError("Erro de estados no arquivo!")
+            id = state.get("id")
+            seen.add(id)
+            init = state.find("initial") is not None
+            final = state.find("final") is not None
+
+            states.append({"state": id, "init": init, "final": final})
+
+        return states
+
+    # return a list of dicts who has all transictions
+    def getTransictions(self) -> list:
+        transitions = []
+        for transition in self.transitions:
+            src = int(transition.findtext("from") or -1)
+            dest = int(transition.findtext("to") or -1)
+            simbol = str(transition.findtext("read") or "")
+
+            if src >= 0 and dest >= 0 and simbol != "":
+                transitions.append({"source": src, "destiny": dest, "simbol": simbol})
+            else:
+                raise ValueError("Erro de transições no arquivo")
+
+        return transitions
+
+    def createAFDXml(self, path: str, states: list, transictions: list):
+        x = 0
+        y = 0
+        aux = 0
+        root = ET.Element("structure")
+        ET.SubElement(root, "type").text = "fa"
+        automaton = ET.SubElement(root, "automaton")
+
+        for state in states:
+            st = ET.SubElement(
+                automaton, "state", id=str(state["state"]), name=("q" + str(aux))
+            )
+            ET.SubElement(st, "x").text = str(x)
+            ET.SubElement(st, "y").text = str(y)
+            if state["final"] is True:
+                ET.SubElement(st, "final")
+            if state["init"] is True:
+                ET.SubElement(st, "initial")
+            x += 50
+            y += 50
+            aux += 1
+
+        for transiction in transictions:
+            tr = ET.SubElement(automaton, "transition")
+            ET.SubElement(tr, "from").text = str(transiction["source"])
+            ET.SubElement(tr, "to").text = str(transiction["destiny"])
+            ET.SubElement(tr, "read").text = str(transiction["simbol"])
+
+        tree = ET.ElementTree(root)
+        tree.write(path, encoding="utf-8", xml_declaration=True)
+
+    def __init__(self, path: str) -> None:
+        tree = ET.parse(path)
+        root = tree.getroot()
+        automaton = root.find("automaton")
+
+        if automaton is None:
+            raise ValueError("automaton not found in archive!")
+
+        self.states = automaton.findall("state")
+        self.transitions = automaton.findall("transition")
