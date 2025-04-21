@@ -19,11 +19,15 @@ class Xml:
             if state.get("id") in seen:
                 raise ValueError("Erro de estados no arquivo!")
             id = state.get("id")
+            if id is None:
+                raise ValueError(
+                    "Erro ao tentar obter estados do documento | id is None"
+                )
             seen.add(id)
             init = state.find("initial") is not None
             final = state.find("final") is not None
 
-            states.append({"state": id, "init": init, "final": final})
+            states.append({"state": int(id), "init": init, "final": final})
 
         return states
 
