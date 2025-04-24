@@ -159,7 +159,7 @@ def comparaEstados(
         estado1 = aux
     # impossivel tirar o proprio estado
     elif estado1 == estado2:
-        return False
+        return True
 
     comparison = searchTableComparison(tableComparison, estado1, estado2)
 
@@ -182,7 +182,7 @@ def comparaEstados(
     if (estado1, estado2) not in nonCirc:
         nonCirc.append((estado1, estado2))
     else:
-        return None
+        return True
 
     # estado em aberto
     if comparison is None:
@@ -196,7 +196,7 @@ def comparaEstados(
         estadoBool1 = comparaEstados(
             tableAlfabet,
             tableAlfabet[estado1][0],
-            tableAlfabet[estado1][1],
+            tableAlfabet[estado2][0],
             tableComparison,
             nonCirc,
             tableEstadosFinais,
@@ -206,7 +206,7 @@ def comparaEstados(
 
         estadoBool2 = comparaEstados(
             tableAlfabet,
-            tableAlfabet[estado2][0],
+            tableAlfabet[estado1][1],
             tableAlfabet[estado2][1],
             tableComparison,
             nonCirc,
