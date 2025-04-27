@@ -92,7 +92,7 @@ class Afd:
         return s
 
 
-def testAfdComplete(afd: Afd):
+def __testAfdComplete(afd: Afd):
     tam = len(afd.alfabet) * len(afd.states)
 
     if tam == len(afd.transiction):
@@ -102,7 +102,7 @@ def testAfdComplete(afd: Afd):
 
 
 # cria uma tabela [estado][(alfabeto)]
-def tabelaDestinoAlfabeto(afd: Afd) -> list:
+def __tabelaDestinoAlfabeto(afd: Afd) -> list:
     dest = list()
 
     for estado in afd.states:
@@ -116,7 +116,7 @@ def tabelaDestinoAlfabeto(afd: Afd) -> list:
     return dest
 
 
-def searchTableComparison(tableComparison: dict, estado1: int, estado2: int):
+def __searchTableComparison(tableComparison: dict, estado1: int, estado2: int):
     if tableComparison[(estado1, estado2)] is True:
         return True
     elif tableComparison[(estado1, estado2)] is False:
@@ -125,7 +125,7 @@ def searchTableComparison(tableComparison: dict, estado1: int, estado2: int):
         return None
 
 
-def searchIncongruency(
+def __searchIncongruency(
     tableAlfabet: list, estado1: int, estado2: int, tableEstadosFinais: list
 ):
     if (
@@ -148,7 +148,7 @@ def searchIncongruency(
         return None
 
 
-def comparaEstados(
+def __comparaEstados(
     tableAlfabet: list,
     estado1: int,
     estado2: int,
@@ -164,7 +164,7 @@ def comparaEstados(
     elif estado1 == estado2:
         return True
 
-    comparison = searchTableComparison(tableComparison, estado1, estado2)
+    comparison = __searchTableComparison(tableComparison, estado1, estado2)
 
     if (estado1, estado2) not in nonCirc:
         nonCirc.append((estado1, estado2))
@@ -174,13 +174,13 @@ def comparaEstados(
     # estado em aberto
     if comparison is None:
         # verifica se há alguma incongruência (estado final comparando com estado nao final)
-        incongruency = searchIncongruency(
+        incongruency = __searchIncongruency(
             tableAlfabet, estado1, estado2, tableEstadosFinais
         )
         if incongruency is not None and not incongruency:
             return False
 
-        estadoBool1 = comparaEstados(
+        estadoBool1 = __comparaEstados(
             tableAlfabet,
             tableAlfabet[estado1][0],
             tableAlfabet[estado2][0],
@@ -191,7 +191,7 @@ def comparaEstados(
         if estadoBool1 is None:
             return None
 
-        estadoBool2 = comparaEstados(
+        estadoBool2 = __comparaEstados(
             tableAlfabet,
             tableAlfabet[estado1][1],
             tableAlfabet[estado2][1],
@@ -221,11 +221,11 @@ def comparaEstados(
 # afd = finite automate, comparing = boolean True if comparing "2" automates ("2" because its a merge between 2 automates, but, the function only accept 1 automate)
 def mountTableEq(afd: Afd, comparing: bool) -> dict:
     if not comparing:
-        testAfdComplete(afd)
+        __testAfdComplete(afd)
 
     estados = list(afd.states)
     equivalence = dict()
-    tableAlfabet = tabelaDestinoAlfabeto(afd)
+    tableAlfabet = __tabelaDestinoAlfabeto(afd)
     final = bool
     stateOpen = list()
 
@@ -251,7 +251,7 @@ def mountTableEq(afd: Afd, comparing: bool) -> dict:
 
         for aberto in stateOpen:
             nonCirc = list()
-            retorno = comparaEstados(
+            retorno = __comparaEstados(
                 tableAlfabet,
                 aberto[0],
                 aberto[1],
