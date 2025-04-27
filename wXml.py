@@ -1,3 +1,4 @@
+from typing import final
 import xml.etree.ElementTree as ET
 
 
@@ -46,7 +47,14 @@ class Xml:
 
         return transitions
 
-    def createAFDXml(self, path: str, states: list, transictions: list):
+    def createAFDXml(
+        self,
+        path: str,
+        states: list,
+        statesFinal: list,
+        stateInitial: int,
+        transictions: dict,
+    ):
         x = 0
         y = 0
         aux = 0
@@ -55,14 +63,12 @@ class Xml:
         automaton = ET.SubElement(root, "automaton")
 
         for state in states:
-            st = ET.SubElement(
-                automaton, "state", id=str(state["state"]), name=("q" + str(aux))
-            )
+            st = ET.SubElement(automaton, "state", id=str(state), name=("q" + str(aux)))
             ET.SubElement(st, "x").text = str(x)
             ET.SubElement(st, "y").text = str(y)
-            if state["final"] is True:
+            if state in statesFinal:
                 ET.SubElement(st, "final")
-            if state["init"] is True:
+            if state == stateInitial:
                 ET.SubElement(st, "initial")
             x += 50
             y += 50
@@ -70,9 +76,9 @@ class Xml:
 
         for transiction in transictions:
             tr = ET.SubElement(automaton, "transition")
-            ET.SubElement(tr, "from").text = str(transiction["source"])
-            ET.SubElement(tr, "to").text = str(transiction["destiny"])
-            ET.SubElement(tr, "read").text = str(transiction["simbol"])
+            ET.SubElement(tr, "from").text = str(transiction[0])
+            ET.SubElement(tr, "to").text = str(transictions[transiction])
+            ET.SubElement(tr, "read").text = str(transiction[1])
 
         tree = ET.ElementTree(root)
         tree.write(path, encoding="utf-8", xml_declaration=True)
