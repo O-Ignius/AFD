@@ -1,3 +1,6 @@
+import copy
+
+
 class Afd:
     def __init__(self, alfabet: str) -> None:
         self.alfabet = alfabet
@@ -163,22 +166,6 @@ def comparaEstados(
 
     comparison = searchTableComparison(tableComparison, estado1, estado2)
 
-    # se estados são finais, verifica se ele loopa em si mesmo
-    if estado1 in tableEstadosFinais and estado2 in tableEstadosFinais:
-        if (
-            tableAlfabet[estado1][0] == tableAlfabet[estado2][0]
-            and tableAlfabet[estado1][1] == tableAlfabet[estado2][1]
-        ) or (
-            (
-                tableAlfabet[estado1][0] == tableAlfabet[estado1][1]
-                and tableAlfabet[estado1][0] == estado1
-            )
-            and (
-                tableAlfabet[estado2][0] == tableAlfabet[estado2][1]
-                and tableAlfabet[estado2][0] == estado2
-            )
-        ):
-            return True
     if (estado1, estado2) not in nonCirc:
         nonCirc.append((estado1, estado2))
     else:
@@ -231,8 +218,10 @@ def comparaEstados(
         return False
 
 
-def mountTableEq(afd: Afd) -> dict:
-    testAfdComplete(afd)
+# afd = finite automate, comparing = boolean True if comparing "2" automates ("2" because its a merge between 2 automates, but, the function only accept 1 automate)
+def mountTableEq(afd: Afd, comparing: bool) -> dict:
+    if not comparing:
+        testAfdComplete(afd)
 
     estados = list(afd.states)
     equivalence = dict()
@@ -276,6 +265,66 @@ def mountTableEq(afd: Afd) -> dict:
 
     print(equivalence)
     return equivalence
+
+
+# return True if AFDs are equivalent or False cause not
+def verifyAFDEquivalence(afd1: Afd, afd2: Afd) -> bool:
+    if afd1.alfabet != afd2.alfabet:
+        return False
+    merged = Afd(afd1.alfabet)
+
+    idStates = 0
+    sInitials = list()
+
+    # cria estados primeiro afd
+    for estado in afd1.states:
+        if estado == afd1.sInit:
+            sInitials.append(idStates)
+        if estado in afd1.sFinal:
+            merged.createState(idStates, False, True)
+        else:
+            merged.createState(idStates, False, False)
+
+        idStates += 1
+
+    # salva primeiro id do 2° afd
+    diff = idStates
+
+    for transicao in afd1.transiction:
+        merged.createTransiction(
+            transicao[0], afd1.transiction[transicao], transicao[1]
+        )
+
+    # cria estados segundo afd
+    for estado in afd2.states:
+        if estado == afd2.sInit:
+            sInitials.append(idStates)
+        if estado in afd2.sFinal:
+            merged.createState(idStates, False, True)
+        else:
+            merged.createState(idStates, False, False)
+
+        idStates += 1
+
+    for transicao in afd1.transiction:
+        merged.createTransiction(
+            (transicao[0] + diff),
+            (afd1.transiction[transicao] + diff),
+            transicao[1],
+        )
+
+    # Monta tabela de equivalencia de estados
+    tabela = mountTableEq(merged, True)
+
+    # verifica se 1° estado de ambos são equivalentes
+    if tabela[(sInitials[0], sInitials[1])]:
+        return True
+    else:
+        return False
+
+
+def copyAfd(afd: Afd) -> Afd:
+    return copy.deepcopy(afd)
 
 
 def multipAfd(afd1: Afd, afd2: Afd):
