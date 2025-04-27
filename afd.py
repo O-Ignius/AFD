@@ -4,7 +4,7 @@ import copy
 class Afd:
     def __init__(self, alfabet: str) -> None:
         self.alfabet = alfabet
-        self.sInit = None
+        self.sInit = -1
         self.sFinal = set()
         self.states = set()
         self.transiction = dict()
@@ -34,12 +34,37 @@ class Afd:
 
         return True
 
+    def deleteState(self, state: int):
+        if state == self.sInit:
+            raise ValueError(
+                "Possível problema derivado de se retirar estado inicial padrão!"
+            )
+        self.states.remove(state)
+        if state in self.sFinal:
+            self.sFinal.remove(state)
+
+        self.deleteStateTransictions(state)
+
+        return True
+
     def createTransiction(self, srce: int, dest: int, simbol: str):
         if srce not in self.states or dest not in self.states:
             raise ValueError("{} or {} não faz parte do AFD!".format(srce, dest))
         if len(simbol) != 1 or simbol not in self.alfabet:
             raise ValueError("Simbolo de transição incorreto: {}".format(simbol))
         self.transiction[(srce, simbol)] = dest
+        return True
+
+    def deleteStateTransictions(self, state: int):
+        delet = list()
+
+        for transict in self.transiction:
+            if transict[0] == state:
+                delet.append(transict)
+
+        for d in delet:
+            del self.transiction[d]
+
         return True
 
     def changsInitial(self, id: int):
@@ -156,6 +181,7 @@ def __comparaEstados(
     nonCirc: list,
     tableEstadosFinais: list,
 ):
+    # somente para sempre usar estado 1 < 2 na recursão
     if estado1 > estado2:
         aux = estado2
         estado2 = estado1
@@ -164,10 +190,13 @@ def __comparaEstados(
     elif estado1 == estado2:
         return True
 
+    # compara os estados na tabela de equivalencia
     comparison = __searchTableComparison(tableComparison, estado1, estado2)
 
+    # verifica dependencia circular: estado1 -> estado2 -> estado1
     if (estado1, estado2) not in nonCirc:
         nonCirc.append((estado1, estado2))
+    # se há dependencia circular os estados são equivalentes
     else:
         return True
 
@@ -177,9 +206,12 @@ def __comparaEstados(
         incongruency = __searchIncongruency(
             tableAlfabet, estado1, estado2, tableEstadosFinais
         )
+
+        # se não há incongruência e a tabela de comparação retornou False
         if incongruency is not None and not incongruency:
             return False
 
+        # verifica para as saidas da 1° letra do alfabeto se são ou não equivalentes
         estadoBool1 = __comparaEstados(
             tableAlfabet,
             tableAlfabet[estado1][0],
@@ -188,6 +220,7 @@ def __comparaEstados(
             nonCirc,
             tableEstadosFinais,
         )
+        # se retorno é None, estado depende de outro estado para definir
         if estadoBool1 is None:
             return None
 
@@ -231,7 +264,7 @@ def mountTableEq(afd: Afd, comparing: bool) -> dict:
 
     print(tableAlfabet)
 
-    # retira triviais e add None em não triviais
+    # retira triviais (comparação entre um estado final e não final) e add None em não triviais
     for i in range(len(estados)):
         final = True if estados[i] in afd.sFinal else False
         for j in range(i + 1, len(estados)):
@@ -325,6 +358,80 @@ def verifyAFDEquivalence(afd1: Afd, afd2: Afd) -> bool:
 
 def copyAfd(afd: Afd) -> Afd:
     return copy.deepcopy(afd)
+
+
+def minimizeAfd(afd: Afd) -> Afd:
+    min = copyAfd(afd)
+
+    equiv = mountTableEq(afd, False)
+    duplicates = list()
+    stateEq = set()
+
+    # cria lista de lista para salvar a relação de estados
+    for i in range(len(afd.states)):
+        duplicates.append(list())
+
+    # itera por todos os estados
+    for i in range(len(afd.states)):
+        for j in range(i + 1, len(afd.states)):
+            # se estado for equivalente
+            if equiv[(i, j)] is True:
+                # evita remover o inicial
+                if j == afd.sInit:
+                    if i not in duplicates:
+                        stateEq.add(i)
+                        duplicates[j].append(i)
+                        duplicates[i].append(None)
+                        duplicates[i].append(j)
+                else:
+                    if j not in duplicates:
+                        # add estado em um set para salvar quais estados são equivalentes no geral
+                        stateEq.add(j)
+                        # append no estado equivalente na posição:
+                        # se 0 equivalente a 1: duplicates[0].append(1)
+                        duplicates[i].append(j)
+                        # append None em duplicates[1] para definir que o estado 1 é equivalente a um outro estado e será retirado
+                        duplicates[j].append(None)
+                        # append o estado equivalente, ou seja, append 0 em duplicates[1]
+                        duplicates[j].append(i)
+
+    aux = 0
+    # Retira transições que vão para estados equivalentes
+    for duplicata in duplicates:
+        # se há duplicatas remova-as do AFD
+        if duplicata:
+            for letra in afd.alfabet:
+                # verifica se é necessário modificar a transição
+                if afd.transiction[(aux, letra)] in stateEq:
+                    # verificação extra para nao modificar estados que serão retirados
+                    if None not in duplicata:
+                        for estado in duplicata:
+                            # se o estado a ser retirado loopava em si mesmo, faz com que o que fique tambem loop em si mesmo
+                            if afd.transiction[(estado, letra)] == estado:
+                                min.transiction[(aux), letra] = aux
+                                break
+                            # caso não, veja se este aponte para algum estado que não será retirado
+                            elif afd.transiction[(estado, letra)] not in stateEq:
+                                min.transiction[(aux, letra)] = afd.transiction[
+                                    (estado, letra)
+                                ]
+                                break
+        # se não há duplicata o estado se mantem, mas pode estar com saidas que apontam para estados futuramente inexistentes
+        else:
+            for letra in afd.alfabet:
+                # se aponta para um estado que será retirado, realoque
+                point = afd.transiction[(aux, letra)]
+                if point in stateEq:
+                    min.transiction[(aux, letra)] = duplicates[point][1]
+
+        aux += 1
+
+    # deleta estados equivalentes e suas transições
+    stateEq = list(stateEq)
+    for eq in stateEq:
+        min.deleteState(eq)
+
+    return min
 
 
 def multipAfd(afd1: Afd, afd2: Afd):
