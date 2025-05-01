@@ -1,5 +1,5 @@
-from typing import final
 import xml.etree.ElementTree as ET
+from afd import Afd
 
 
 class Xml:
@@ -93,3 +93,16 @@ class Xml:
 
         self.states = automaton.findall("state")
         self.transitions = automaton.findall("transition")
+
+
+def createAFDXML(path: str) -> Afd:
+    arq = Xml(path)
+    afd = Afd(arq.getAlfabet())
+    temp = arq.getStates()
+    for t in temp:
+        afd.createState(t["state"], t["init"], t["final"])
+    temp = arq.getTransictions()
+    for t in temp:
+        afd.createTransiction(int(t["source"]), int(t["destiny"]), str(t["simbol"]))
+
+    return afd
