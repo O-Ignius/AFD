@@ -47,42 +47,6 @@ class Xml:
 
         return transitions
 
-    def createAFDXml(
-        self,
-        path: str,
-        states: list,
-        statesFinal: list,
-        stateInitial: int,
-        transictions: dict,
-    ):
-        x = 0
-        y = 0
-        aux = 0
-        root = ET.Element("structure")
-        ET.SubElement(root, "type").text = "fa"
-        automaton = ET.SubElement(root, "automaton")
-
-        for state in states:
-            st = ET.SubElement(automaton, "state", id=str(state), name=("q" + str(aux)))
-            ET.SubElement(st, "x").text = str(x)
-            ET.SubElement(st, "y").text = str(y)
-            if state in statesFinal:
-                ET.SubElement(st, "final")
-            if state == stateInitial:
-                ET.SubElement(st, "initial")
-            x += 50
-            y += 50
-            aux += 1
-
-        for transiction in transictions:
-            tr = ET.SubElement(automaton, "transition")
-            ET.SubElement(tr, "from").text = str(transiction[0])
-            ET.SubElement(tr, "to").text = str(transictions[transiction])
-            ET.SubElement(tr, "read").text = str(transiction[1])
-
-        tree = ET.ElementTree(root)
-        tree.write(path, encoding="utf-8", xml_declaration=True)
-
     def __init__(self, path: str) -> None:
         tree = ET.parse(path)
         root = tree.getroot()
@@ -95,7 +59,7 @@ class Xml:
         self.transitions = automaton.findall("transition")
 
 
-def createAFDXML(path: str) -> Afd:
+def generate_afd_using_xml(path: str) -> Afd:
     arq = Xml(path)
     afd = Afd(arq.getAlfabet())
     temp = arq.getStates()
@@ -106,3 +70,38 @@ def createAFDXML(path: str) -> Afd:
         afd.createTransiction(int(t["source"]), int(t["destiny"]), str(t["simbol"]))
 
     return afd
+
+
+def export_afd_xml(afd: Afd, path: str):
+    states = afd.states
+    statesFinal = afd.sFinal
+    stateInitial = afd.sInit
+    transictions = afd.transiction
+
+    x = 0
+    y = 0
+    aux = 0
+    root = ET.Element("structure")
+    ET.SubElement(root, "type").text = "fa"
+    automaton = ET.SubElement(root, "automaton")
+
+    for state in states:
+        st = ET.SubElement(automaton, "state", id=str(state), name=("q" + str(aux)))
+        ET.SubElement(st, "x").text = str(x)
+        ET.SubElement(st, "y").text = str(y)
+        if state in statesFinal:
+            ET.SubElement(st, "final")
+        if state == stateInitial:
+            ET.SubElement(st, "initial")
+        x += 50
+        y += 50
+        aux += 1
+
+    for transiction in transictions:
+        tr = ET.SubElement(automaton, "transition")
+        ET.SubElement(tr, "from").text = str(transiction[0])
+        ET.SubElement(tr, "to").text = str(transictions[transiction])
+        ET.SubElement(tr, "read").text = str(transiction[1])
+
+    tree = ET.ElementTree(root)
+    tree.write(path, encoding="utf-8", xml_declaration=True)

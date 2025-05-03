@@ -126,6 +126,52 @@ def __testAfdComplete(afd: Afd):
         raise ValueError("AFD Incompleto!")
 
 
+def __conectivityAfd__(
+    afd: Afd, estado: int, letra: str, alcancaveis: set, estadoTestado: dict
+):
+    dest = afd.transiction[(estado, letra)]
+    alcancaveis.add(dest)
+
+    # se alcançáveis for igual ao estado ele é conexo
+    if len(alcancaveis) == len(afd.states):
+        return True
+
+    # se estado testado[dest existe, soma mais 1 nele]
+    if dest in estadoTestado.keys():
+        if (estadoTestado[dest] >= 2) or (dest == estado):
+            return
+        estadoTestado[dest] = estadoTestado[dest] + 1
+    # caso contrário, crie-o
+    else:
+        estadoTestado[dest] = 1
+
+    for letter in afd.alfabet:
+        __conectivityAfd__(afd, dest, letter, alcancaveis, estadoTestado)
+    return
+
+
+def __testAfdConexo(afd: Afd):
+    alcancaveis = set()
+    alcancaveis.add(afd.sInit)
+    estadoTestado = dict()
+    estadoTestado[afd.sInit] = 1
+
+    for letra in afd.alfabet:
+        __conectivityAfd__(afd, afd.sInit, letra, alcancaveis, estadoTestado)
+
+    del_state = list()
+
+    for estado in afd.states:
+        # se o estado não foi alcancavel a partir do estado inicial passando por todas as opções possiveis, retire-o
+        if estado not in alcancaveis:
+            del_state.append(estado)
+
+    for estado in del_state:
+        afd.deleteState(estado)
+
+    return
+
+
 # cria uma tabela [estado][(alfabeto)]
 def __tabelaDestinoAlfabeto(afd: Afd) -> list:
     dest = list()
@@ -254,6 +300,9 @@ def __comparaEstados(
 # afd = finite automate, comparing = boolean True if comparing "2" automates ("2" because its a merge between 2 automates, but, the function only accept 1 automate)
 def mountTableEq(afd: Afd, comparing: bool) -> dict:
     if not comparing:
+        # verifica se AFD é conexo, se houver desconexões, retire-as
+        __testAfdConexo(afd)
+        # verifica se o afd é completo, ou seja, a quantia de transições é igual a tamanho do alfabeto * quantia de estados
         __testAfdComplete(afd)
 
     estados = list(afd.states)
@@ -434,13 +483,75 @@ def minimizeAfd(afd: Afd) -> Afd:
     return min
 
 
+def stateOrder(
+    afd: Afd, estado: int, letra: str, ordem: list, concatAlfabet: str, posiLista: int
+):
+    dest = afd.transiction[(estado, letra)]
+
+    if ordem[posiLista] and dest in ordem[posiLista]:
+        return
+    # caso contrário, crie-o
+    else:
+        ordem[posiLista].append(dest)
+
+    count = 0
+    for letter in concatAlfabet:
+        stateOrder(afd, dest, letter, ordem, concatAlfabet, count)
+        count += 1
+
+    return
+
+
+# retorna o AFD multiplicado e quais estados são referentes aquele estado
 def multipAfd(afd1: Afd, afd2: Afd):
+    # concatena alfabeto:
     alfabet = afd1.alfabet
     for letter in afd2.alfabet:
         if letter not in alfabet:
             alfabet += letter
+
     afdResult = Afd(alfabet)
-    afdResult.createState(
-        0,
-        True,
-    )
+    # cria estado inicial
+    afdResult.createState(0, True)
+
+    ordem1 = list()
+    ordem2 = list()
+
+    for letter in alfabet:
+        ordem1.append(list())
+        ordem2.append(list())
+
+    count = 0
+    for letter in alfabet:
+        stateOrder(afd1, afd1.sInit, letter, ordem1, alfabet, count)
+        stateOrder(afd2, afd2.sInit, letter, ordem2, alfabet, count)
+
+    adicionados = dict()
+    adicionados[(afd1.sInit, afd2.sInit)] = 0
+    count = 1
+    countLetter = 0
+    for ordem1Letra, ordem2Letra in zip(ordem1, ordem2):
+        for estado1 in ordem1Letra:
+            for estado2 in ordem2Letra:
+                if (estado1, estado2) not in adicionados.keys():
+                    afdResult.createState(count)
+                    adicionados[(estado1, estado2)] = count
+                    afdResult.createTransiction(count - 1, count, alfabet[countLetter])
+                    count += 1
+        # afdResult.createTransiction(
+        #     ordem2Letra[1], ordem1Letra[1], alfabet[countLetter]
+        # )
+        countLetter += 1
+
+    return afdResult, adicionados
+
+
+def operacaoAfd(afd1: Afd, afd2: Afd, tipo: str):
+    afdResult, estados = multipAfd(afd1, afd2)
+    if tipo == "uniao":
+        for estado in estados:
+            if estado[0] in afd1.sFinal or estado[1] in afd2.sFinal:
+                afdResult.changsFinal(estados[estado], True)
+        afdResult = minimizeAfd(afdResult)
+    elif tipo == "intersecao":
+        pass
