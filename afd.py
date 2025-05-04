@@ -1,4 +1,5 @@
 import copy
+from typing import Optional
 
 
 class Afd:
@@ -567,13 +568,48 @@ def multipAfd(afd1: Afd, afd2: Afd):
     return afdResult, merge_states
 
 
-def operacaoAfd(afd1: Afd, afd2: Afd, tipo: str):
-    afdResult, merge_states = multipAfd(afd1, afd2)
-    if tipo == "uniao":
-        for estado in merge_states:
-            if estado[0] in afd1.sFinal or estado[1] in afd2.sFinal:
-                afdResult.changsFinal(merge_states[estado], True)
+def operacaoAfd(tipo: int, afd1: Afd, afd2: Optional[Afd] = None):
+    """
+    tipo - 1: União, 2: intersecção, 3: Complemento, 4: Diferença
+    afd1 - Não opcional, necessário para alguma operação
+    afd2 - Opicional, necessário para a maioria das operações
+    -> retorna um afd referente a operação, ou False em caso de mal uso
+    """
+
+    if afd2 is None and tipo != 3:
+        print("Passe um segundo afd para realizar interseção, união ou diferença!")
+        return False
+
+    # realiza o complemento de um afd passado por parametro e o retorna
+    elif afd2 is None and tipo == 3:
+        afdResult = copy.deepcopy(afd1)
+        finais = afdResult.sFinal
+        for estado in afdResult.states:
+            if estado in finais:
+                afdResult.changsFinal(estado, False)
+            else:
+                afdResult.changsFinal(estado, True)
+
+        return afdResult
+    # se ambos forem passados verifica qual das operacao foi escolhida
+    elif afd2 is not None:
+        if tipo == 3:
+            print("Erro de uso! Passe somente um AFD!")
+            return False
+
+        afdResult, merge_states = multipAfd(afd1, afd2)
+        if tipo == 1:
+            for estado in merge_states:
+                if estado[0] in afd1.sFinal or estado[1] in afd2.sFinal:
+                    afdResult.changsFinal(merge_states[estado], True)
+        elif tipo == 2:
+            for estado in merge_states:
+                if estado[0] in afd1.sFinal and estado[1] in afd2.sFinal:
+                    afdResult.changsFinal(merge_states[estado], True)
+        elif tipo == 4:
+            for estado in merge_states:
+                if (estado[0] in afd1.sFinal) and (estado[1] not in afd2.sFinal):
+                    afdResult.changsFinal(merge_states[estado], True)
+
         afdResult = minimizeAfd(afdResult)
         return afdResult
-    elif tipo == "intersecao":
-        pass
