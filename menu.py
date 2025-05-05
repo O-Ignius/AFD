@@ -1,5 +1,18 @@
 from afd import Afd, operacaoAfd, minimizeAfd, verifyAFDEquivalence
 from wXml import export_afd_xml, generate_afd_using_xml
+import os
+
+
+arquivos = [
+    nome
+    for nome in os.listdir(".")
+    if os.path.isfile(nome) and nome.endswith((".jff", ".xml"))
+]
+
+
+def clear_terminal():
+    comando = "cls" if os.name == "nt" else "clear"
+    os.system(comando)
 
 
 def import_arquivo(afd: Afd, operacao: str):
@@ -21,6 +34,12 @@ def import_arquivo(afd: Afd, operacao: str):
             print("Opção inválida!")
 
 
+def print_arquivos_disponiveis():
+    print("Arquivos disponiveis:")
+    print(arquivos)
+    print()
+
+
 def menu_operacoes():
     while True:
         print("\n=== MENU - Operações entre AFDs ===")
@@ -32,12 +51,14 @@ def menu_operacoes():
         print("0. Voltar ao menu principal")
 
         escolha = input("Escolha uma opção: ")
+        clear_terminal()
         afd = None
         afd2 = None
 
         if int(escolha) < 0 or int(escolha) > 5:
             print("Opção inválida. Tente novamente.")
         elif escolha == "1":
+            print_arquivos_disponiveis()
             path = input("Digite o nome do arquivo XML que contenha o 1° AFD: ")
             afd = generate_afd_using_xml(path)
             path = input("Digite o nome do arquivo XML que contenha o 2° AFD: ")
@@ -71,9 +92,11 @@ def menu_principal():
         print("0. Sair")
 
         escolha = input("Escolha uma opção: ")
+        clear_terminal()
         afd = None
 
         if escolha == "1":
+            print_arquivos_disponiveis()
             path = input("Digite o nome do arquivo XML que contenha o AFD: ")
             afd = generate_afd_using_xml(path)
             import_arquivo(afd, "após importação")
@@ -82,20 +105,26 @@ def menu_principal():
                 minimized = minimizeAfd(afd)
                 import_arquivo(minimized, "após minimização")
             else:
+                print_arquivos_disponiveis()
+                path = input("Digite o nome do arquivo XML que contenha o AFD: ")
+                afd = generate_afd_using_xml(path)
                 print("Primeiro importe um AFD!")
         elif escolha == "3":
             if afd is not None:
                 op = input("Deseja usar o afd importado anteriormente?  1- Sim  2- Não")
                 if op == 1:
+                    print_arquivos_disponiveis()
                     path = input("Digite o nome do arquivo XML que contenha o 2° AFD: ")
                     afd2 = generate_afd_using_xml(path)
                 else:
+                    print_arquivos_disponiveis()
                     path = input("Digite o nome do arquivo XML que contenha o 1° AFD: ")
                     afd = generate_afd_using_xml(path)
                     path = input("Digite o nome do arquivo XML que contenha o 2° AFD: ")
                     afd2 = generate_afd_using_xml(path)
 
             else:
+                print_arquivos_disponiveis()
                 path = input("Digite o nome do arquivo XML que contenha o 1° AFD: ")
                 afd = generate_afd_using_xml(path)
                 path = input("Digite o nome do arquivo XML que contenha o 2° AFD: ")
