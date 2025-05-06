@@ -35,16 +35,13 @@ class Afd:
 
         return True
 
-    def deleteState(self, state: int):
-        if state == self.sInit:
-            raise ValueError(
-                "Possível problema derivado de se retirar estado inicial padrão!"
-            )
+    def deleteState(self, state: int, del_transiction: bool):
         self.states.remove(state)
-        if state in self.sFinal:
+        if state in self.sFinal and del_transiction:
             self.sFinal.remove(state)
 
-        self.deleteStateTransictions(state)
+        if del_transiction:
+            self.deleteStateTransictions(state)
 
         return True
 
@@ -168,7 +165,42 @@ def __testAfdConexo(afd: Afd):
             del_state.append(estado)
 
     for estado in del_state:
-        afd.deleteState(estado)
+        afd.deleteState(estado, True)
+
+    # após deletar os estados, renumere-os
+    novos = dict()
+    count = 0
+    for estado in afd.states:
+        novos[estado] = count
+        count += 1
+
+    del_state = list()
+    for estado in afd.states:
+        del_state.append(estado)
+
+    # deleta os estados fora de ordem
+    anteriores = list(novos.keys())
+    for estado in del_state:
+        if estado in anteriores:
+            if estado == afd.sInit:
+                afd.changsInitial(novos[estado])
+            afd.deleteState(estado, False)
+            afd.createState(novos[estado])
+
+    for estado in afd.sFinal:
+        if novos[estado]:
+            afd.sFinal.remove(estado)
+            afd.changsFinal(novos[estado], True)
+
+    transicoes = list()
+    for transiction in afd.transiction:
+        if transiction[0] in anteriores:
+            trans = (transiction, afd.transiction[transiction])
+            transicoes.append(trans)
+
+    for transiction in transicoes:
+        del afd.transiction[transiction[0]]
+        afd.createTransiction(novos[transiction[0][0]], novos[transiction[1]], transiction[0][1])
 
     return
 
@@ -256,6 +288,7 @@ def __comparaEstados(
 
         # se não há incongruência e a tabela de comparação retornou False
         if incongruency is not None and not incongruency:
+            nonCirc.pop()
             return False
 
         # verifica para as saidas da 1° letra do alfabeto se são ou não equivalentes
@@ -283,18 +316,16 @@ def __comparaEstados(
             return None
 
         if estadoBool1 == estadoBool2 and estadoBool1 is True:
+            nonCirc.pop()
             return True
         else:
+            nonCirc.pop()
             return False
     elif comparison is True:
-        aux = nonCirc[0]
-        nonCirc.clear()
-        nonCirc.append(aux)
+        nonCirc.pop()
         return True
     else:
-        aux = nonCirc[0]
-        nonCirc.clear()
-        nonCirc.append(aux)
+        nonCirc.pop()
         return False
 
 
@@ -386,10 +417,10 @@ def verifyAFDEquivalence(afd1: Afd, afd2: Afd) -> bool:
 
         idStates += 1
 
-    for transicao in afd1.transiction:
+    for transicao in afd2.transiction:
         merged.createTransiction(
             (transicao[0] + diff),
-            (afd1.transiction[transicao] + diff),
+            (afd2.transiction[transicao] + diff),
             transicao[1],
         )
 
@@ -485,7 +516,7 @@ def minimizeAfd(afd: Afd) -> Afd:
     # deleta estados equivalentes e suas transições
     stateEq = list(stateEq)
     for eq in stateEq:
-        min.deleteState(eq)
+        min.deleteState(eq, True)
 
     return min
 
@@ -552,18 +583,28 @@ def multipAfd(afd1: Afd, afd2: Afd):
                 count += 1
 
     # lista de transições (srce, dest, simbol)
-    processed = list()
-    for letter in alfabet:
-        get_new_transictions(
-            afdResult,
-            afd1,
-            afd2,
-            afd1.sInit,
-            afd2.sInit,
-            letter,
-            merge_states,
-            processed,
-        )
+    # for letter in alfabet:
+    #     get_new_transictions(
+    #         afdResult,
+    #         afd1,
+    #         afd2,
+    #         afd1.sInit,
+    #         afd2.sInit,
+    #         letter,
+    #         merge_states,
+    #         processed,
+    #     )
+    for states1 in afd1.states:
+        for states2 in afd2.states:
+            for letra in alfabet:
+                transiction1 = afd1.transiction[states1, letra]
+                transiction2 = afd2.transiction[states2, letra]
+                # cria transição para o afd resultante
+                afdResult.createTransiction(
+                    merge_states[states1, states2],
+                    merge_states[transiction1, transiction2],
+                    letra,
+                )
 
     return afdResult, merge_states
 
@@ -593,10 +634,6 @@ def operacaoAfd(tipo: int, afd1: Afd, afd2: Optional[Afd] = None):
         return afdResult
     # se ambos forem passados verifica qual das operacao foi escolhida
     elif afd2 is not None:
-        if tipo == 3:
-            print("Erro de uso! Passe somente um AFD!")
-            return False
-
         afdResult, merge_states = multipAfd(afd1, afd2)
         if tipo == 1:
             for estado in merge_states:

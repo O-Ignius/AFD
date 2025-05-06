@@ -20,14 +20,15 @@ def import_arquivo(afd: Afd, operacao: str):
 
     while True:
         print("Deseja importar para um arquivo XML o resultado?")
-        op = input("1- Sim   2- Não")
+        op = input("1- Sim   2- Não: ")
 
-        if op == 1:
+        if op == "1":
             arq = input("Digite o nome do arquivo: ")
             if ".xml" not in arq:
                 arq += ".xml"
             export_afd_xml(afd, arq)
-        elif op == 2:
+            break
+        elif op == "2":
             print(afd)
             break
         else:
@@ -41,6 +42,8 @@ def print_arquivos_disponiveis():
 
 
 def menu_operacoes():
+    afd = None
+    afd2 = None
     while True:
         print("\n=== MENU - Operações entre AFDs ===")
         print("1. Importar AFDs")
@@ -52,8 +55,6 @@ def menu_operacoes():
 
         escolha = input("Escolha uma opção: ")
         clear_terminal()
-        afd = None
-        afd2 = None
 
         if int(escolha) < 0 or int(escolha) > 5:
             print("Opção inválida. Tente novamente.")
@@ -108,7 +109,7 @@ def menu_principal():
                 print_arquivos_disponiveis()
                 path = input("Digite o nome do arquivo XML que contenha o AFD: ")
                 afd = generate_afd_using_xml(path)
-                print("Primeiro importe um AFD!")
+                import_arquivo(afd, "após minimização")
         elif escolha == "3":
             if afd is not None:
                 op = input("Deseja usar o afd importado anteriormente?  1- Sim  2- Não")
