@@ -148,25 +148,7 @@ def __conectivityAfd__(
     return
 
 
-def __testAfdConexo(afd: Afd):
-    alcancaveis = set()
-    alcancaveis.add(afd.sInit)
-    estadoTestado = dict()
-    estadoTestado[afd.sInit] = 1
-
-    for letra in afd.alfabet:
-        __conectivityAfd__(afd, afd.sInit, letra, alcancaveis, estadoTestado)
-
-    del_state = list()
-
-    for estado in afd.states:
-        # se o estado não foi alcancavel a partir do estado inicial passando por todas as opções possiveis, retire-o
-        if estado not in alcancaveis:
-            del_state.append(estado)
-
-    for estado in del_state:
-        afd.deleteState(estado, True)
-
+def __resetAfd(afd: Afd):
     # após deletar os estados, renumere-os
     novos = dict()
     count = 0
@@ -200,7 +182,32 @@ def __testAfdConexo(afd: Afd):
 
     for transiction in transicoes:
         del afd.transiction[transiction[0]]
-        afd.createTransiction(novos[transiction[0][0]], novos[transiction[1]], transiction[0][1])
+        afd.createTransiction(
+            novos[transiction[0][0]], novos[transiction[1]], transiction[0][1]
+        )
+    return
+
+
+def __testAfdConexo(afd: Afd):
+    alcancaveis = set()
+    alcancaveis.add(afd.sInit)
+    estadoTestado = dict()
+    estadoTestado[afd.sInit] = 1
+
+    for letra in afd.alfabet:
+        __conectivityAfd__(afd, afd.sInit, letra, alcancaveis, estadoTestado)
+
+    del_state = list()
+
+    for estado in afd.states:
+        # se o estado não foi alcancavel a partir do estado inicial passando por todas as opções possiveis, retire-o
+        if estado not in alcancaveis:
+            del_state.append(estado)
+
+    for estado in del_state:
+        afd.deleteState(estado, True)
+
+    __resetAfd(afd)
 
     return
 
@@ -338,6 +345,7 @@ def mountTableEq(afd: Afd, comparing: bool) -> dict:
         __testAfdComplete(afd)
 
     estados = list(afd.states)
+    estados.sort()
     equivalence = dict()
     tableAlfabet = __tabelaDestinoAlfabeto(afd)
     final = bool
@@ -441,21 +449,21 @@ def copyAfd(afd: Afd) -> Afd:
 def minimizeAfd(afd: Afd) -> Afd:
     min = copyAfd(afd)
 
-    equiv = mountTableEq(afd, False)
+    equiv = mountTableEq(min, False)
     duplicates = list()
     stateEq = set()
 
     # cria lista de lista para salvar a relação de estados
-    for i in range(len(afd.states)):
+    for i in range(len(min.states)):
         duplicates.append(list())
 
     # itera por todos os estados
-    for i in range(len(afd.states)):
-        for j in range(i + 1, len(afd.states)):
+    for i in range(len(min.states)):
+        for j in range(i + 1, len(min.states)):
             # se estado for equivalente
             if equiv[(i, j)] is True:
                 # evita remover o inicial
-                if j == afd.sInit:
+                if j == min.sInit:
                     if i not in duplicates:
                         stateEq.add(i)
                         duplicates[j].append(i)
@@ -478,7 +486,7 @@ def minimizeAfd(afd: Afd) -> Afd:
     for duplicata in duplicates:
         # se há duplicatas remova-as do AFD
         if duplicata:
-            for letra in afd.alfabet:
+            for letra in min.alfabet:
                 # verifica se é necessário modificar a transição
                 if afd.transiction[(aux, letra)] in stateEq:
                     # verificação extra para nao modificar estados que serão retirados
@@ -505,7 +513,7 @@ def minimizeAfd(afd: Afd) -> Afd:
                                 ][1]
         # se não há duplicata o estado se mantem, mas pode estar com saidas que apontam para estados futuramente inexistentes
         else:
-            for letra in afd.alfabet:
+            for letra in min.alfabet:
                 # se aponta para um estado que será retirado, realoque
                 point = afd.transiction[(aux, letra)]
                 if point in stateEq:
@@ -517,6 +525,18 @@ def minimizeAfd(afd: Afd) -> Afd:
     stateEq = list(stateEq)
     for eq in stateEq:
         min.deleteState(eq, True)
+
+    # troca transições caso as mesmas não tenham sido trocadas anteriormente mas o destino tenha sido retirado
+    trocar = dict()
+    for transicao in min.transiction:
+        if min.transiction[transicao] in stateEq:
+            for eq in stateEq:
+                if min.transiction[transicao] == eq:
+                    trocar[transicao] = duplicates[eq][1]
+
+    for troca in trocar:
+        del min.transiction[troca]
+        min.createTransiction(troca[0], trocar[troca], troca[1])
 
     return min
 
@@ -583,6 +603,7 @@ def multipAfd(afd1: Afd, afd2: Afd):
                 count += 1
 
     # lista de transições (srce, dest, simbol)
+    # processed = list()
     # for letter in alfabet:
     #     get_new_transictions(
     #         afdResult,
@@ -644,9 +665,13 @@ def operacaoAfd(tipo: int, afd1: Afd, afd2: Optional[Afd] = None):
                 if estado[0] in afd1.sFinal and estado[1] in afd2.sFinal:
                     afdResult.changsFinal(merge_states[estado], True)
         elif tipo == 4:
+            if verifyAFDEquivalence(afd1, afd2):
+                print("Os AFDs são equivalentes, portanto não há diferença entre eles!")
+                return
             for estado in merge_states:
                 if (estado[0] in afd1.sFinal) and (estado[1] not in afd2.sFinal):
                     afdResult.changsFinal(merge_states[estado], True)
 
         afdResult = minimizeAfd(afdResult)
+        __resetAfd(afdResult)
         return afdResult

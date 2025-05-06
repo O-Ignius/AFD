@@ -69,16 +69,20 @@ def menu_operacoes():
         elif afd is not None:
             if escolha == "2":
                 result = operacaoAfd(1, afd, afd2)
-                import_arquivo(result, "após união")
+                if result:
+                    import_arquivo(result, "após união")
             elif escolha == "3":
                 result = operacaoAfd(2, afd, afd2)
-                import_arquivo(result, "após intersecção")
+                if result:
+                    import_arquivo(result, "após intersecção")
             elif escolha == "4":
                 result = operacaoAfd(3, afd)
-                import_arquivo(result, "após complemento")
+                if result:
+                    import_arquivo(result, "após complemento")
             elif escolha == "5":
                 result = operacaoAfd(4, afd, afd2)
-                import_arquivo(result, "após diferença")
+                if result:
+                    import_arquivo(result, "após diferença")
         else:
             print("Importe no mínimo 1 AFD")
 
